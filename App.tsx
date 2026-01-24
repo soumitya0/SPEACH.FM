@@ -16,12 +16,17 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [lastAudioBlob, setLastAudioBlob] = useState<Blob | null>(null);
   const [analyser, setAnalyser] = useState<AnalyserNode | null>(null);
+  
+  // Custom Station Settings
+  const [stationName, setStationName] = useState<string>('SPEACH.FM');
+  const [stationDescription, setStationDescription] = useState<string>('The ultimate interactive AI radio station.');
   const [coverImage, setCoverImage] = useState<string>('https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=800');
+  const [imageUrlInput, setImageUrlInput] = useState<string>('');
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const durationRef = useRef<number>(0);
 
-  // Auto-scroll logic
+  // Auto-scroll logic for teleprompter
   useEffect(() => {
     if (!isBroadcasting || !playbackStartTime || !durationRef.current) return;
     let frameId: number;
@@ -78,8 +83,18 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (event) => setCoverImage(event.target?.result as string);
+      reader.onload = (event) => {
+        const result = event.target?.result as string;
+        setCoverImage(result);
+        setImageUrlInput('');
+      };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const applyImageUrl = () => {
+    if (imageUrlInput.trim()) {
+      setCoverImage(imageUrlInput.trim());
     }
   };
 
@@ -88,7 +103,7 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(lastAudioBlob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `SPEACH_FM_${selectedVoice.name}_Broadcast.wav`;
+    a.download = `${stationName.replace(/\s+/g, '_')}_Broadcast.wav`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -97,11 +112,11 @@ const App: React.FC = () => {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#050505] text-white font-sans selection:bg-white/20">
       
-      {/* PERSISTENT SIDEBAR */}
+      {/* PERSISTENT SIDEBAR - Left Side */}
       <aside className="w-72 md:w-80 border-r border-white/5 flex flex-col glass z-50">
         <div className="p-8 pb-4 flex items-center gap-3">
-          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-black text-white">S</div>
-          <h1 className="text-xl font-black italic tracking-tighter">SPEACH.FM</h1>
+          <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-black text-white shadow-lg shadow-blue-600/20">S</div>
+          <h1 className="text-xl font-black italic tracking-tighter uppercase truncate">{stationName}</h1>
         </div>
 
         <nav className="px-4 space-y-1 mb-8">
@@ -155,24 +170,24 @@ const App: React.FC = () => {
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
+      {/* MAIN CONTENT AREA - Right Side (Player / Settings) */}
       <main className="flex-1 h-full flex flex-col relative overflow-hidden">
         
         {/* TAB: BROADCAST */}
         {activeTab === 'broadcast' && (
-          <div className="flex-1 flex flex-col h-full relative p-8">
-            <div className="flex-1 flex flex-col md:flex-row gap-8 min-h-0">
+          <div className="flex-1 flex flex-col h-full relative p-6 md:p-8">
+            <div className="flex-1 flex flex-col xl:flex-row gap-6 md:gap-8 min-h-0">
               
               {/* Left Column: Input or Teleprompter */}
-              <div className="flex-[3] glass rounded-[2.5rem] flex flex-col p-8 md:p-12 relative overflow-hidden">
-                <div className="flex justify-between items-center mb-10">
+              <div className="flex-[3] glass rounded-[2.5rem] flex flex-col p-6 md:p-10 relative overflow-hidden">
+                <div className="flex justify-between items-center mb-8">
                    <div className="font-mono text-[10px] text-white/40 flex gap-4 uppercase tracking-widest">
                       <span>Host: <span className="text-white">{selectedVoice.name}</span></span>
-                      <span>Modality: <span className="text-white">PCM_24K</span></span>
+                      <span>Signal: <span className="text-white">PCM_24K</span></span>
                    </div>
                    {isBroadcasting && (
                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-mono text-red-500 animate-pulse">RECORDING_STREAM</span>
+                        <span className="text-[10px] font-mono text-red-500 animate-pulse font-bold tracking-tighter">LIVE_TX_ON</span>
                         <div className="w-32 h-1 bg-white/5 rounded-full overflow-hidden">
                            <div className="h-full bg-red-500 transition-all duration-300" style={{ width: `${broadcastProgress}%` }}></div>
                         </div>
@@ -189,7 +204,7 @@ const App: React.FC = () => {
                             {inputText.split('\n').filter(p => p.trim()).map((para, i) => (
                               <p 
                                 key={i} 
-                                className="text-4xl md:text-6xl font-black leading-tight tracking-tighter"
+                                className="text-4xl md:text-5xl lg:text-6xl font-black leading-tight tracking-tighter"
                                 style={{ color: selectedVoice.color, textShadow: `0 0 50px ${selectedVoice.color}44` }}
                               >
                                 {para}
@@ -204,7 +219,7 @@ const App: React.FC = () => {
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
                       placeholder="Start writing your script here..."
-                      className="w-full h-full bg-transparent border-none focus:ring-0 text-4xl md:text-5xl font-black leading-tight placeholder:text-white/5 resize-none no-scrollbar"
+                      className="w-full h-full bg-transparent border-none focus:ring-0 text-3xl md:text-4xl lg:text-5xl font-black leading-tight placeholder:text-white/5 resize-none no-scrollbar"
                     />
                   )}
                 </div>
@@ -222,49 +237,64 @@ const App: React.FC = () => {
                    ></div>
 
                    <div className="relative">
-                      {/* Outer Vinyl */}
+                      {/* Outer Vinyl / CD */}
                       <div 
-                        className={`w-48 h-48 md:w-64 md:h-64 rounded-full bg-black shadow-2xl flex items-center justify-center relative overflow-hidden border-4 border-white/5 animate-spin-slow ${!isBroadcasting ? 'paused' : ''}`}
+                        className={`w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64 rounded-full bg-black shadow-2xl flex items-center justify-center relative overflow-hidden border-4 border-white/5 animate-spin-slow ${!isBroadcasting ? 'paused' : ''}`}
                       >
-                        {/* Grooves */}
+                        {/* Vinyl Grooves effect */}
                         <div className="absolute inset-0 rounded-full opacity-30 border-[10px] border-white/10"></div>
                         <div className="absolute inset-4 rounded-full opacity-20 border-[8px] border-white/5"></div>
                         <div className="absolute inset-8 rounded-full opacity-10 border-[6px] border-white/5"></div>
                         
-                        {/* User Uploaded Cover */}
-                        <div className="w-24 h-24 md:w-32 md:h-32 rounded-full overflow-hidden border-4 border-black z-10">
-                           <img src={coverImage} className="w-full h-full object-cover" alt="Cover" />
+                        {/* User Uploaded Cover Art */}
+                        <div className="w-24 h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden border-4 border-black z-10 shadow-lg">
+                           <img src={coverImage} className="w-full h-full object-cover" alt="Station Artwork" />
                         </div>
                         
-                        {/* Center Pin */}
+                        {/* Center Pin Hole */}
                         <div className="absolute w-4 h-4 bg-black rounded-full border-2 border-white/20 z-20"></div>
                       </div>
 
                       {/* Floating Indicator */}
                       {isBroadcasting && (
-                        <div className="absolute -right-4 top-0 bg-red-600 text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter shadow-lg shadow-red-600/20">
+                        <div className="absolute -right-4 top-0 bg-red-600 text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter shadow-lg shadow-red-600/20 z-30">
                            On Air
                         </div>
                       )}
                    </div>
 
-                   <div className="mt-8 text-center">
-                      <h3 className="text-xl font-black uppercase tracking-widest">{isBroadcasting ? 'Now Broadcasting' : 'Radio Ready'}</h3>
-                      <p className="text-sm text-white/40 font-medium mt-1">{selectedVoice.personality}</p>
+                   {/* Custom Station Identity on Console */}
+                   <div className="mt-8 text-center px-4 w-full">
+                      <div className="flex flex-col items-center">
+                        <span className="text-[10px] font-mono text-white/30 uppercase tracking-[0.3em] mb-1 font-bold">
+                          {isBroadcasting ? 'LIVE TRANSMISSION' : 'STATION IDLE'}
+                        </span>
+                        <h3 className="text-2xl font-black uppercase tracking-tighter truncate w-full">
+                          {stationName}
+                        </h3>
+                        <p className="text-xs text-white/50 font-medium mt-2 line-clamp-2 px-2 max-w-[280px]">
+                          {stationDescription}
+                        </p>
+                        <div className="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
+                           <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: selectedVoice.color }}></span>
+                           <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">{selectedVoice.name}</span>
+                        </div>
+                      </div>
                    </div>
                 </div>
 
-                {/* BOTTOM TOOLS */}
-                <div className="glass rounded-[2.5rem] p-8 flex flex-col gap-6">
+                {/* BOTTOM TOOLS: Visualizer & Action Buttons */}
+                <div className="glass rounded-[2.5rem] p-6 md:p-8 flex flex-col gap-6">
                    <Visualizer analyser={analyser} isPlaying={isBroadcasting} color={selectedVoice.color} />
                    
                    <div className="flex gap-4">
                       <button
                         onClick={downloadAudio}
                         disabled={!lastAudioBlob || isBroadcasting}
-                        className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all disabled:opacity-20"
+                        className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all disabled:opacity-20 flex items-center justify-center"
+                        title="Download Last Broadcast"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                       </button>
 
                       <button
@@ -276,7 +306,7 @@ const App: React.FC = () => {
                             : 'bg-white text-black hover:scale-[1.02] active:scale-95'
                         }`}
                       >
-                        {isBroadcasting ? "STATION LIVE" : "BROADCAST"}
+                        {isBroadcasting ? "STATION LIVE" : "START SHOW"}
                       </button>
                    </div>
                 </div>
@@ -284,8 +314,8 @@ const App: React.FC = () => {
             </div>
 
             {error && (
-              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-red-600 text-xs font-mono px-4 py-2 rounded-lg uppercase tracking-widest z-50">
-                [SYSTEM_ERROR]: {error}
+              <div className="absolute bottom-10 left-1/2 -translate-x-1/2 bg-red-600/90 text-[10px] font-mono px-6 py-2 rounded-full uppercase tracking-widest z-50 border border-white/20 backdrop-blur-md shadow-2xl">
+                [SYSTEM_FATAL_ERROR]: {error}
               </div>
             )}
           </div>
@@ -293,40 +323,80 @@ const App: React.FC = () => {
 
         {/* TAB: SETTINGS */}
         {activeTab === 'settings' && (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 max-w-2xl mx-auto">
-             <div className="w-full glass rounded-[3rem] p-12 text-center space-y-10">
+          <div className="flex-1 flex flex-col items-center justify-center p-8 md:p-12 overflow-y-auto no-scrollbar">
+             <div className="w-full max-w-2xl glass rounded-[3rem] p-10 md:p-14 text-center space-y-10">
                 <div className="space-y-2">
                    <h2 className="text-4xl font-black uppercase tracking-tighter">Station Aesthetics</h2>
-                   <p className="text-white/40 font-medium">Customize your broadcast visuals and station ID.</p>
+                   <p className="text-white/40 font-medium text-sm">Customize your broadcast visuals and station ID.</p>
                 </div>
 
-                <div className="relative group mx-auto w-64 h-64">
-                   <div className="absolute inset-0 bg-white/5 rounded-full blur-2xl group-hover:bg-blue-600/10 transition-all duration-500"></div>
-                   <div className="relative w-full h-full rounded-full border-4 border-white/10 overflow-hidden">
-                      <img src={coverImage} className="w-full h-full object-cover" alt="Album Art" />
-                      <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex items-center justify-center cursor-pointer transition-all">
-                         <span className="text-sm font-bold uppercase tracking-widest">Change Image</span>
-                         <input type="file" accept="image/*" onChange={onImageUpload} className="hidden" />
-                      </label>
-                   </div>
+                {/* Cover Image Customization */}
+                <div className="space-y-6">
+                  <div className="relative group mx-auto w-48 h-48 md:w-56 md:h-56">
+                    <div className="absolute inset-0 bg-blue-600/10 rounded-full blur-2xl group-hover:bg-blue-600/20 transition-all duration-500"></div>
+                    <div className="relative w-full h-full rounded-full border-4 border-white/10 overflow-hidden shadow-2xl">
+                        <img src={coverImage} className="w-full h-full object-cover" alt="Album Art Preview" />
+                        <label className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center cursor-pointer transition-all duration-300">
+                          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                          <span className="text-[10px] font-bold uppercase tracking-widest">Upload File</span>
+                          <input type="file" accept="image/*" onChange={onImageUpload} className="hidden" />
+                        </label>
+                    </div>
+                  </div>
+
+                  {/* URL Input */}
+                  <div className="flex gap-3">
+                    <input 
+                      type="text" 
+                      placeholder="Paste Image URL..." 
+                      value={imageUrlInput}
+                      onChange={(e) => setImageUrlInput(e.target.value)}
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-white/20 transition-all"
+                    />
+                    <button 
+                      onClick={applyImageUrl}
+                      className="px-6 bg-white/10 rounded-xl text-[10px] font-bold uppercase tracking-widest hover:bg-white/20 transition-all"
+                    >
+                      Apply
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-left">
-                   <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                      <div className="text-[10px] text-white/30 uppercase font-bold mb-1">Visualizer Sensitivity</div>
-                      <div className="text-sm font-bold">OPTIMIZED (24K)</div>
+                {/* Station Metadata */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest ml-1">Station Name</label>
+                      <input 
+                        type="text" 
+                        value={stationName}
+                        onChange={(e) => setStationName(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-white/30 transition-all"
+                        placeholder="e.g., RADIOWAVE.X"
+                      />
                    </div>
-                   <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                      <div className="text-[10px] text-white/30 uppercase font-bold mb-1">Animation Rate</div>
-                      <div className="text-sm font-bold">12s / ROTATION</div>
+                   <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest ml-1">Station Frequency</label>
+                      <div className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold text-white/40">
+                         24.0 KHZ (FIXED)
+                      </div>
+                   </div>
+                   <div className="md:col-span-2 space-y-2">
+                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest ml-1">Station Description</label>
+                      <textarea 
+                        rows={2}
+                        value={stationDescription}
+                        onChange={(e) => setStationDescription(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm font-medium focus:outline-none focus:border-white/30 transition-all resize-none"
+                        placeholder="Tell your listeners about your station..."
+                      />
                    </div>
                 </div>
 
                 <button 
                   onClick={() => setActiveTab('broadcast')}
-                  className="w-full py-5 rounded-[2rem] bg-blue-600 font-black text-xl uppercase tracking-tighter hover:bg-blue-500 transition-all shadow-xl shadow-blue-600/20"
+                  className="w-full py-5 rounded-[2rem] bg-blue-600 font-black text-xl uppercase tracking-tighter hover:scale-[1.02] transition-all shadow-xl shadow-blue-600/20 active:scale-95"
                 >
-                  Save & Return
+                  Confirm Calibration
                 </button>
              </div>
           </div>
@@ -337,8 +407,11 @@ const App: React.FC = () => {
       {/* BACKGROUND ATMOSPHERE */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
          <div 
-          className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] blur-[200px] opacity-20 transition-all duration-1000"
+          className="absolute -top-[20%] -left-[10%] w-[60%] h-[60%] blur-[200px] opacity-10 transition-all duration-1000"
           style={{ backgroundColor: selectedVoice.color }}
+         ></div>
+         <div 
+          className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-600/5 blur-[150px] rounded-full"
          ></div>
       </div>
     </div>
