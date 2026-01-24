@@ -19,6 +19,7 @@ const App: React.FC = () => {
   
   // Custom Station Settings
   const [stationName, setStationName] = useState<string>('SPEACH.FM');
+  const [albumName, setAlbumName] = useState<string>('SYNTHETIC DREAMS');
   const [stationDescription, setStationDescription] = useState<string>('The ultimate interactive AI radio station.');
   const [coverImage, setCoverImage] = useState<string>('https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=800');
   const [imageUrlInput, setImageUrlInput] = useState<string>('');
@@ -239,7 +240,7 @@ const App: React.FC = () => {
                    <div className="relative">
                       {/* Outer Vinyl / CD */}
                       <div 
-                        className={`w-48 h-48 md:w-56 md:h-56 lg:w-64 lg:h-64 rounded-full bg-black shadow-2xl flex items-center justify-center relative overflow-hidden border-4 border-white/5 animate-spin-slow ${!isBroadcasting ? 'paused' : ''}`}
+                        className={`w-48 h-48 md:w-52 md:h-52 lg:w-60 lg:h-60 rounded-full bg-black shadow-2xl flex items-center justify-center relative overflow-hidden border-4 border-white/5 animate-spin-slow ${!isBroadcasting ? 'paused' : ''}`}
                       >
                         {/* Vinyl Grooves effect */}
                         <div className="absolute inset-0 rounded-full opacity-30 border-[10px] border-white/10"></div>
@@ -247,7 +248,7 @@ const App: React.FC = () => {
                         <div className="absolute inset-8 rounded-full opacity-10 border-[6px] border-white/5"></div>
                         
                         {/* User Uploaded Cover Art */}
-                        <div className="w-24 h-24 md:w-28 md:h-28 lg:w-32 lg:h-32 rounded-full overflow-hidden border-4 border-black z-10 shadow-lg">
+                        <div className="w-24 h-24 md:w-26 md:h-26 lg:w-30 lg:h-30 rounded-full overflow-hidden border-4 border-black z-10 shadow-lg">
                            <img src={coverImage} className="w-full h-full object-cover" alt="Station Artwork" />
                         </div>
                         
@@ -263,50 +264,58 @@ const App: React.FC = () => {
                       )}
                    </div>
 
-                   {/* Custom Station Identity on Console */}
-                   <div className="mt-8 text-center px-4 w-full">
-                      <div className="flex flex-col items-center">
-                        <span className="text-[10px] font-mono text-white/30 uppercase tracking-[0.3em] mb-1 font-bold">
-                          {isBroadcasting ? 'LIVE TRANSMISSION' : 'STATION IDLE'}
-                        </span>
-                        <h3 className="text-2xl font-black uppercase tracking-tighter truncate w-full">
+                   {/* Custom Station Identity on Console - Reversed Sizes */}
+                   <div className="mt-8 text-center px-4 w-full flex-1 flex flex-col items-center">
+                      <span className="text-[10px] font-mono text-white/30 uppercase tracking-[0.3em] mb-1 font-bold">
+                        {isBroadcasting ? 'LIVE TRANSMISSION' : 'STATION IDLE'}
+                      </span>
+                      
+                      {/* Reversed Hierarchy: Station Name is now small, Album Name is now large */}
+                      <div className="w-full flex flex-col">
+                        <h4 className="text-[10px] font-mono text-white/40 uppercase tracking-[0.3em] font-bold mb-1">
                           {stationName}
+                        </h4>
+                        <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter truncate w-full leading-none mb-2">
+                          {albumName}
                         </h3>
-                        <p className="text-xs text-white/50 font-medium mt-2 line-clamp-2 px-2 max-w-[280px]">
+                      </div>
+
+                      <div className="flex-1 w-full overflow-y-auto custom-scroll mt-1 px-2 max-w-[280px]">
+                        <p className="text-xs text-white/50 font-medium whitespace-pre-wrap text-center">
                           {stationDescription}
                         </p>
-                        <div className="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10">
-                           <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: selectedVoice.color }}></span>
-                           <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">{selectedVoice.name}</span>
-                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 shrink-0">
+                         <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: selectedVoice.color }}></span>
+                         <span className="text-[10px] font-bold text-white/60 uppercase tracking-widest">{selectedVoice.name}</span>
                       </div>
                    </div>
                 </div>
 
-                {/* BOTTOM TOOLS: Visualizer & Action Buttons */}
-                <div className="glass rounded-[2.5rem] p-6 md:p-8 flex flex-col gap-6">
+                {/* BOTTOM TOOLS: Visualizer & Action Buttons - REDUCED SIZE FOR BETTER HEIGHT */}
+                <div className="glass rounded-[1.5rem] p-3 md:p-4 flex flex-col gap-3">
                    <Visualizer analyser={analyser} isPlaying={isBroadcasting} color={selectedVoice.color} />
                    
-                   <div className="flex gap-4">
+                   <div className="flex gap-2">
                       <button
                         onClick={downloadAudio}
                         disabled={!lastAudioBlob || isBroadcasting}
-                        className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all disabled:opacity-20 flex items-center justify-center"
+                        className="p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all disabled:opacity-20 flex items-center justify-center shrink-0"
                         title="Download Last Broadcast"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                       </button>
 
                       <button
                         onClick={handleBroadcast}
                         disabled={isBroadcasting || !inputText.trim()}
-                        className={`flex-1 py-4 rounded-2xl font-black text-lg tracking-widest transition-all ${
+                        className={`flex-1 py-3 rounded-xl font-black text-xs md:text-sm tracking-[0.2em] transition-all uppercase ${
                           isBroadcasting 
-                            ? 'bg-red-600 shadow-[0_0_30px_rgba(220,38,38,0.4)]' 
-                            : 'bg-white text-black hover:scale-[1.02] active:scale-95'
+                            ? 'bg-red-600 shadow-[0_0_15px_rgba(220,38,38,0.3)]' 
+                            : 'bg-white text-black hover:scale-[1.01] active:scale-95'
                         }`}
                       >
-                        {isBroadcasting ? "STATION LIVE" : "START SHOW"}
+                        {isBroadcasting ? "STATION LIVE" : "START BROADCAST"}
                       </button>
                    </div>
                 </div>
@@ -375,10 +384,23 @@ const App: React.FC = () => {
                       />
                    </div>
                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest ml-1">Album / Show Name</label>
+                      <input 
+                        type="text" 
+                        value={albumName}
+                        onChange={(e) => setAlbumName(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold focus:outline-none focus:border-white/30 transition-all"
+                        placeholder="e.g., SYNTHETIC DREAMS"
+                      />
+                   </div>
+                   <div className="space-y-2">
                       <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest ml-1">Station Frequency</label>
                       <div className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm font-bold text-white/40">
                          24.0 KHZ (FIXED)
                       </div>
+                   </div>
+                   <div className="md:col-span-1 space-y-2 flex flex-col justify-end pb-1">
+                      <div className="text-[10px] font-mono text-white/20 uppercase">Signal Mode: Stereo Digital</div>
                    </div>
                    <div className="md:col-span-2 space-y-2">
                       <label className="text-[10px] font-bold text-white/30 uppercase tracking-widest ml-1">Station Description</label>
