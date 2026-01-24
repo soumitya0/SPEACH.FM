@@ -1,0 +1,7 @@
+{
+  "name": "SPEACH.FM",
+  "description": "The ultimate interactive AI radio station. Choose your specialized host, craft your script, and broadcast with high-fidelity synthetic speech powered by Gemini 2.5 Flash.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
