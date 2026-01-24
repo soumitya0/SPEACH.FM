@@ -19,3 +19,5 @@ export interface AudioVisualizerProps {
   isPlaying: boolean;
   color: string;
 }
+
+export type AppTab = 'broadcast' | 'settings';
