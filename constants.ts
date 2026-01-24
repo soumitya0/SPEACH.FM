@@ -52,4 +52,4 @@ export const VOICES: Voice[] = [
   }
 ];
 
-export const DEFAULT_PROMPT = "Welcome to the all-new SPEACH.FM! स्पीच एफ़एम पर आपका स्वागत है। I am your host, Aradhya, broadcasting live through the power of Google's Gemini AI. Type any message below and let's start the show!";
+export const DEFAULT_PROMPT = "Welcome to the all-new SPEACH.FM! स्पीच एफ़एम पर आपका स्वागत है। I am your host, Aradhya, broadcasting live through the power of Flash AI. Type any message below and let's start the show!";
