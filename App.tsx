@@ -22,6 +22,7 @@ const App: React.FC = () => {
   const [inputText, setInputText] = useState(DEFAULT_PROMPT);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [isAlbumFullscreen, setIsAlbumFullscreen] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("");
   const [countdown, setCountdown] = useState(60);
   const [showRelaxMsg, setShowRelaxMsg] = useState(false);
@@ -60,7 +61,7 @@ const App: React.FC = () => {
       timer = window.setInterval(() => {
         setCountdown(prev => prev - 1);
       }, 1000);
-    } else if (countdown === 0) {
+    } else if (isSynthesizing && countdown === 0) {
       setShowRelaxMsg(true);
     }
     return () => clearInterval(timer);
@@ -149,6 +150,11 @@ const App: React.FC = () => {
     setIsSynthesizing(false);
     setPlaybackStartTime(null);
     setAnalyser(null);
+    setStationName('SPEACH.FM');
+    setAlbumName('SYNTHETIC DREAMS');
+    setStationDescription('The ultimate interactive AI radio station.');
+    setCoverImage('https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&q=80&w=800');
+    setIsAlbumFullscreen(false);
   };
 
   const onImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -181,13 +187,17 @@ const App: React.FC = () => {
     document.body.removeChild(a);
   };
 
+  const toggleAlbumFullscreen = () => {
+    setIsAlbumFullscreen(!isAlbumFullscreen);
+  };
+
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-[#050505] text-white font-sans selection:bg-white/20">
       
       {/* PERSISTENT SIDEBAR - Left Side */}
       <aside 
         className={`fixed lg:relative h-full border-white/5 flex flex-col glass z-50 transition-all duration-300 ease-in-out overflow-hidden ${
-          isSidebarOpen 
+          (isSidebarOpen && !isAlbumFullscreen)
             ? 'w-full sm:w-80 translate-x-0 border-r opacity-100' 
             : 'w-0 -translate-x-full lg:w-0 lg:border-none opacity-0 pointer-events-none'
         }`}
@@ -210,7 +220,7 @@ const App: React.FC = () => {
             onClick={() => { setActiveTab('broadcast'); if(window.innerWidth < 1024) setIsSidebarOpen(false); }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all font-medium ${activeTab === 'broadcast' ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white hover:bg-white/5'}`}
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12a10 10 0 0 1 10-10c1.8 0 3.5.5 5 1.4L18.4 2a1 1 0 0 1 1.6.8v6.2a1 1 0 0 1-1 1h-6.2a1 1 0 0 1-.8-1.6L14.6 6.8A6 6 0 1 0 18 12h2a8 8 0 1 1-18 0Z"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12a10 10 0 0 1 10-10c1.8 0 3.5.5 5 1.4L18.4 2a1 1 0 0 1-1.6.8v6.2a1 1 0 0 1-1 1h-6.2a1 1 0 0 1-.8-1.6L14.6 6.8A6 6 0 1 0 18 12h2a8 8 0 1 1-18 0Z"/></svg>
             Broadcast Console
           </button>
           <button 
@@ -251,16 +261,26 @@ const App: React.FC = () => {
           ))}
         </div>
 
+        {/* Global Reset Button in Sidebar */}
+        <div className="px-4 pb-4 min-w-[320px]">
+          <button 
+            onClick={recalibrateSignal}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/5 border border-white/5 text-white/40 hover:text-white hover:bg-white/10 transition-all text-xs font-bold uppercase tracking-widest"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            Recalibrate Signal
+          </button>
+        </div>
+
         <div className="p-6 border-t border-white/5 text-[9px] font-mono text-white/20 uppercase tracking-widest text-center min-w-[320px]">
           Powered by Gemini 2.5 Flash
         </div>
       </aside>
 
-      {/* MAIN CONTENT AREA - Right Side (Player / Settings) */}
+      {/* MAIN CONTENT AREA */}
       <main className="flex-1 h-full flex flex-col relative overflow-hidden transition-all duration-300">
         
-        {/* Toggle Sidebar Button - visible only when sidebar is closed */}
-        {!isSidebarOpen && (
+        {(!isSidebarOpen && !isAlbumFullscreen) && (
           <button 
             onClick={() => setIsSidebarOpen(true)}
             className="absolute top-6 left-6 z-[60] p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/60 hover:text-white transition-all backdrop-blur-md"
@@ -272,42 +292,42 @@ const App: React.FC = () => {
         {/* TAB: BROADCAST */}
         {activeTab === 'broadcast' && (
           <div className="flex-1 flex flex-col h-full relative p-4 md:p-6 lg:p-8">
-            <div className="flex-1 flex flex-col xl:flex-row gap-4 md:gap-6 lg:gap-8 min-h-0">
+            <div className={`flex-1 flex flex-col xl:flex-row gap-4 md:gap-6 lg:gap-8 min-h-0 ${isAlbumFullscreen ? 'justify-center items-center' : ''}`}>
               
-              {/* Left Column: Input or Teleprompter */}
-              <div className={`flex-[3] glass rounded-[1.5rem] md:rounded-[2.5rem] flex flex-col p-5 md:p-10 relative overflow-hidden transition-all duration-300 ${isBroadcasting ? 'min-h-[160px] xl:min-h-0' : 'flex-1'}`}>
+              {/* Layout 1: Teleprompter / Script Area */}
+              <div className={`glass rounded-[1.5rem] md:rounded-[2.5rem] flex-col p-5 md:p-10 relative overflow-hidden transition-all duration-500 ${isAlbumFullscreen ? 'hidden' : 'flex flex-[3]'} ${isBroadcasting ? 'min-h-[160px] xl:min-h-0' : 'flex-1'}`}>
                 
-                {/* LOADER UI (Localized to script area) */}
+                {/* Localized Loader Overlay */}
                 {isSynthesizing && (
-                  <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-black/60 backdrop-blur-xl transition-all duration-500 p-8">
+                  <div className="absolute inset-0 z-[70] flex flex-col items-center justify-center bg-black/60 backdrop-blur-2xl transition-all duration-500 p-8 text-center">
                     <div className="relative w-48 h-48 md:w-64 md:h-64 flex items-center justify-center">
-                      {/* Spinning Ring */}
                       <div className="absolute inset-0 border-4 border-white/5 rounded-full"></div>
                       <div 
                         className="absolute inset-0 border-4 border-t-transparent rounded-full animate-spin" 
                         style={{ borderColor: `${selectedVoice.color} transparent transparent transparent` }}
                       ></div>
                       
-                      {/* Countdown or Relax Msg */}
-                      <div className="flex flex-col items-center gap-2">
+                      <div className="flex flex-col items-center justify-center gap-2 max-w-[80%]">
                         {!showRelaxMsg ? (
                           <div className="text-4xl md:text-6xl font-black tabular-nums tracking-tighter" style={{ color: selectedVoice.color }}>
                             {countdown}
                           </div>
                         ) : (
-                          <div className="text-center animate-pulse px-4">
-                            <span className="text-xs md:text-sm font-black leading-tight uppercase tracking-widest text-white/80">SIT RELAX<br/>WE ARE ANALYZING CONTEXT</span>
+                          <div className="animate-pulse px-4">
+                            <span className="text-xs md:text-sm font-black leading-tight uppercase tracking-[0.2em] text-white">
+                              SIT RELAX<br/>
+                              <span className="text-[10px] text-white/50">WE ARE ANALYZING CONTEXT</span>
+                            </span>
                           </div>
                         )}
                       </div>
 
-                      {/* Radar Scan Effect */}
                       <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none">
                         <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-white/40 to-transparent animate-scan"></div>
                       </div>
                     </div>
                     
-                    <div className="mt-8 text-center space-y-2">
+                    <div className="mt-8 space-y-2">
                       <div className="font-mono text-[9px] text-white/30 uppercase tracking-[0.4em] animate-pulse">Neural Signal Synthesis</div>
                       <h2 className="text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase text-white h-4">{loadingMessage}</h2>
                     </div>
@@ -316,7 +336,6 @@ const App: React.FC = () => {
 
                 <div className="flex justify-between items-center mb-4 md:mb-8">
                    <div className="flex items-center gap-4">
-                     {/* Inner Close Button (Desktop Only) */}
                      {isSidebarOpen && (
                        <button 
                         onClick={() => setIsSidebarOpen(false)}
@@ -366,66 +385,81 @@ const App: React.FC = () => {
                       placeholder="Start writing your script here..."
                       disabled={isSynthesizing}
                       className="w-full h-full bg-transparent border-none focus:ring-0 text-xl md:text-4xl lg:text-5xl font-black leading-tight placeholder:text-white/5 resize-none no-scrollbar transition-opacity duration-300"
-                      style={{ opacity: isSynthesizing ? 0.1 : 1 }}
+                      style={{ opacity: isSynthesizing ? 0.05 : 1 }}
                     />
                   )}
                 </div>
               </div>
 
-              {/* Right Column: Player & Controls */}
-              <div className={`flex-[2] flex flex-col gap-4 transition-all duration-300 ${isBroadcasting ? 'h-auto' : ''}`}>
+              {/* Layout 2: Player / CD Area */}
+              <div className={`flex flex-col gap-4 transition-all duration-700 ${isAlbumFullscreen ? 'w-full h-full flex-1' : 'flex-[2]'} ${isBroadcasting ? 'h-auto' : ''}`}>
                 
-                {/* ALBUM / CD PLAYER */}
-                <div className={`glass rounded-[1.5rem] md:rounded-[2.5rem] flex lg:flex-col items-center justify-center p-4 md:p-6 relative overflow-hidden group transition-all duration-500 ${isBroadcasting ? 'py-6 md:py-8' : 'flex-1'} gap-4 md:gap-6`}>
+                <div className={`glass rounded-[1.5rem] md:rounded-[2.5rem] flex flex-col items-center justify-center p-4 md:p-6 relative overflow-hidden group transition-all duration-700 ${isAlbumFullscreen ? 'flex-1 p-8 md:p-16' : (isBroadcasting ? 'py-6 md:py-8' : 'flex-1 lg:flex-col')} gap-4 md:gap-8`}>
+                   
+                   {/* Fullscreen Toggle Button */}
+                   <button 
+                    onClick={toggleAlbumFullscreen}
+                    className="absolute top-4 right-4 z-[40] p-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-white/40 hover:text-white transition-all backdrop-blur-md"
+                    title={isAlbumFullscreen ? "Exit Immersive View" : "Immersive View"}
+                   >
+                    {isAlbumFullscreen ? (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3v5H3M16 3v5h5M8 21v-5H3M16 21v-5h5"/></svg>
+                    ) : (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+                    )}
+                   </button>
+
                    {/* Background Glow */}
                    <div 
                     className="absolute inset-0 opacity-10 blur-[100px] transition-all duration-1000"
                     style={{ backgroundColor: selectedVoice.color }}
                    ></div>
 
-                   <div className="relative shrink-0">
+                   <div className="relative shrink-0 transition-transform duration-700">
                       {/* Outer Vinyl / CD */}
                       <div 
-                        className={`w-20 h-20 sm:w-32 sm:h-32 md:w-48 md:h-48 lg:w-56 lg:h-56 rounded-full bg-black shadow-2xl flex items-center justify-center relative overflow-hidden border-2 md:border-4 border-white/5 animate-spin-slow ${!isBroadcasting ? 'paused' : ''}`}
+                        className={`rounded-full bg-black shadow-2xl flex items-center justify-center relative overflow-hidden border-2 md:border-4 border-white/5 animate-spin-slow transition-all duration-700 ${!isBroadcasting ? 'paused' : ''} ${isAlbumFullscreen ? 'w-48 h-48 sm:w-64 sm:h-64 md:w-80 md:h-80 lg:w-[450px] lg:h-[450px]' : 'w-20 h-20 sm:w-32 sm:h-32 md:w-48 md:h-48 lg:w-56 lg:h-56'}`}
                       >
                         <div className="absolute inset-0 rounded-full opacity-30 border-[3px] md:border-[10px] border-white/10"></div>
                         <div className="absolute inset-1 md:inset-4 rounded-full opacity-20 border-[2px] md:border-[8px] border-white/5"></div>
-                        <div className="w-10 h-10 sm:w-16 sm:h-16 md:w-24 md:h-24 lg:w-28 lg:h-28 rounded-full overflow-hidden border-2 md:border-4 border-black z-10 shadow-lg">
+                        <div className={`rounded-full overflow-hidden border-2 md:border-4 border-black z-10 shadow-lg transition-all duration-700 ${isAlbumFullscreen ? 'w-24 h-24 sm:w-32 sm:h-32 md:w-48 md:h-48 lg:w-56 lg:h-56' : 'w-10 h-10 sm:w-16 sm:h-16 md:w-24 md:h-24 lg:w-28 lg:h-28'}`}>
                            <img src={coverImage} className="w-full h-full object-cover" alt="Station Artwork" />
                         </div>
-                        <div className="absolute w-1.5 md:w-4 h-1.5 md:h-4 bg-black rounded-full border-1 md:border-2 border-white/20 z-20"></div>
+                        <div className={`bg-black rounded-full border-1 md:border-2 border-white/20 z-20 transition-all duration-700 ${isAlbumFullscreen ? 'w-4 md:w-10 h-4 md:h-10' : 'w-1.5 md:w-4 h-1.5 md:h-4'}`}></div>
                       </div>
 
-                      {/* Floating Indicator */}
                       {isBroadcasting && (
-                        <div className="absolute -right-1 top-0 bg-red-600 text-[7px] md:text-[9px] font-bold px-1.5 py-0.5 md:py-1 rounded-full uppercase tracking-tighter shadow-lg shadow-red-600/20 z-30">
+                        <div className="absolute -right-2 top-0 bg-red-600 text-[8px] md:text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-tighter shadow-lg shadow-red-600/20 z-30">
                            LIVE
                         </div>
                       )}
                    </div>
 
-                   {/* Custom Station Identity */}
-                   <div className={`text-center lg:text-center lg:px-4 w-full flex flex-col items-center lg:items-center justify-center transition-all duration-500 flex-1`}>
-                      <span className="hidden lg:block text-[9px] font-mono text-white/20 uppercase tracking-[0.3em] mb-1 font-bold">
+                   {/* Metadata Bar */}
+                   <div className={`text-center w-full flex flex-col items-center justify-center transition-all duration-500 flex-1`}>
+                      <span className={`hidden lg:block font-mono text-white/20 uppercase tracking-[0.3em] mb-1 font-bold ${isAlbumFullscreen ? 'text-[12px] md:text-[14px] mb-4' : 'text-[9px]'}`}>
                         {isBroadcasting ? 'LIVE TRANSMISSION' : 'STATION IDLE'}
                       </span>
                       
-                      <div className="w-full flex flex-row flex-wrap items-center justify-center gap-x-3 gap-y-1 lg:flex-col lg:gap-0.5">
-                        <h3 className="text-sm sm:text-lg md:text-3xl lg:text-5xl font-black uppercase tracking-tighter leading-tight whitespace-nowrap">
+                      <div className={`w-full flex flex-col items-center justify-center transition-all duration-700 ${isAlbumFullscreen ? 'gap-2' : 'lg:gap-0.5'}`}>
+                        {/* Title - Stacks vertically in fullscreen and desktop always */}
+                        <h3 className={`font-black uppercase tracking-tighter leading-tight whitespace-nowrap transition-all duration-700 ${isAlbumFullscreen ? 'text-2xl sm:text-4xl md:text-6xl lg:text-8xl' : 'text-sm sm:text-lg md:text-3xl lg:text-5xl'}`}>
                           {albumName}
                         </h3>
-                        <div className="hidden sm:block lg:hidden h-3 w-[1px] bg-white/10"></div>
-                        <h4 className="text-[9px] sm:text-[10px] md:text-[12px] lg:text-[11px] font-mono text-white/40 lg:text-white/40 uppercase tracking-[0.1em] sm:tracking-[0.2em] lg:tracking-[0.25em] font-bold whitespace-nowrap">
+                        
+                        {/* Station Name - Block level stack */}
+                        <h4 className={`font-mono text-white/40 uppercase tracking-[0.1em] sm:tracking-[0.2em] lg:tracking-[0.25em] font-bold whitespace-nowrap transition-all duration-700 ${isAlbumFullscreen ? 'text-xs sm:text-sm md:text-lg lg:text-2xl mt-2' : 'text-[9px] sm:text-[10px] md:text-[12px] lg:text-[11px]'}`}>
                           {stationName}
                         </h4>
-                        <div className="hidden sm:block lg:hidden h-3 w-[1px] bg-white/10"></div>
-                        <div className="flex items-center gap-1.5 lg:mt-3 px-2 py-0.5 lg:px-3 lg:py-1 rounded-full bg-white/5 border border-white/10 shrink-0">
+
+                        {/* Host Tag - Block level stack */}
+                        <div className={`flex items-center gap-1.5 mt-2 lg:mt-3 px-2 py-0.5 lg:px-3 lg:py-1 rounded-full bg-white/5 border border-white/10 shrink-0 transition-all duration-700 ${isAlbumFullscreen ? 'scale-150 mt-8' : ''}`}>
                            <span className="w-1 h-1 lg:w-1.5 lg:h-1.5 rounded-full" style={{ backgroundColor: selectedVoice.color }}></span>
                            <span className="text-[8px] sm:text-[9px] font-bold text-white/60 uppercase tracking-widest">{selectedVoice.name}</span>
                         </div>
                       </div>
 
-                      <div className="hidden lg:block flex-1 w-full overflow-y-auto custom-scroll mt-3 px-2 max-w-[280px]">
+                      <div className={`hidden lg:block flex-1 w-full overflow-y-auto custom-scroll mt-3 px-2 max-w-[280px] transition-all duration-700 ${isAlbumFullscreen ? 'hidden' : ''}`}>
                         <p className="text-xs text-white/50 font-medium whitespace-pre-wrap text-center">
                           {stationDescription}
                         </p>
@@ -433,8 +467,8 @@ const App: React.FC = () => {
                    </div>
                 </div>
 
-                {/* BOTTOM TOOLS: Visualizer & Action Buttons */}
-                <div className="glass rounded-[1rem] md:rounded-[1.25rem] p-3 md:p-4 flex flex-col gap-3 shrink-0">
+                {/* Layout 3: Controls Area */}
+                <div className={`glass rounded-[1rem] md:rounded-[1.25rem] p-3 md:p-4 flex-col gap-3 shrink-0 transition-all duration-500 ${isAlbumFullscreen ? 'hidden' : 'flex'}`}>
                    <Visualizer analyser={analyser} isPlaying={isBroadcasting} color={selectedVoice.color} />
                    
                    <div className="flex gap-2">
@@ -546,16 +580,6 @@ const App: React.FC = () => {
                         onChange={(e) => setAlbumName(e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs md:text-sm font-bold focus:outline-none focus:border-white/30 transition-all"
                         placeholder="e.g., SYNTHETIC DREAMS"
-                      />
-                   </div>
-                   <div className="space-y-1 sm:col-span-2">
-                      <label className="text-[8px] md:text-[10px] font-bold text-white/30 uppercase tracking-widest ml-1">Description</label>
-                      <textarea 
-                        rows={2}
-                        value={stationDescription}
-                        onChange={(e) => setStationDescription(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-xs md:text-sm font-medium focus:outline-none focus:border-white/30 transition-all resize-none"
-                        placeholder="Station bio..."
                       />
                    </div>
                 </div>
