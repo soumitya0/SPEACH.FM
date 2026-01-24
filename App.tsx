@@ -273,7 +273,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="p-6 border-t border-white/5 text-[9px] font-mono text-white/20 uppercase tracking-widest text-center min-w-[320px]">
-          Powered by Gemini 2.5 Flash
+          Powered by Flash AI
         </div>
       </aside>
 
