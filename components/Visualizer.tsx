@@ -1,26 +1,68 @@
 
-import React from 'react';
-import { AudioVisualizerProps } from '../types';
+import React, { useEffect, useRef } from 'react';
 
-export const Visualizer: React.FC<AudioVisualizerProps> = ({ isPlaying, color }) => {
-  const bars = Array.from({ length: 24 }, (_, i) => i);
+interface VisualizerProps {
+  analyser: AnalyserNode | null;
+  isPlaying: boolean;
+  color: string;
+}
+
+export const Visualizer: React.FC<VisualizerProps> = ({ analyser, isPlaying, color }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number>(null);
+
+  useEffect(() => {
+    if (!canvasRef.current || !analyser) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    const draw = () => {
+      animationRef.current = requestAnimationFrame(draw);
+      analyser.getByteFrequencyData(dataArray);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const barWidth = (canvas.width / bufferLength) * 2;
+      let x = 0;
+
+      for (let i = 0; i < bufferLength; i++) {
+        const barHeight = (dataArray[i] / 255) * canvas.height;
+        ctx.fillStyle = isPlaying ? color : `${color}33`;
+        
+        // Rounded bar drawing
+        const radius = barWidth / 2;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+            ctx.roundRect(x, canvas.height - barHeight, barWidth - 1, barHeight, [radius, radius, 0, 0]);
+        } else {
+            ctx.rect(x, canvas.height - barHeight, barWidth - 1, barHeight);
+        }
+        ctx.fill();
+
+        x += barWidth;
+      }
+    };
+
+    draw();
+
+    return () => {
+      if (animationRef.current) cancelAnimationFrame(animationRef.current);
+    };
+  }, [analyser, isPlaying, color]);
 
   return (
-    <div className="flex items-end gap-1 h-12 w-full justify-center px-4 overflow-hidden">
-      {bars.map((bar) => (
-        <div
-          key={bar}
-          className="w-1.5 rounded-t-full transition-all duration-300"
-          style={{
-            backgroundColor: color,
-            height: isPlaying 
-              ? `${20 + Math.random() * 80}%` 
-              : '10%',
-            opacity: isPlaying ? 1 : 0.3,
-            transitionDelay: isPlaying ? `${bar * 50}ms` : '0ms'
-          }}
-        />
-      ))}
+    <div className="h-16 w-full flex items-center justify-center bg-black/40 rounded-xl overflow-hidden px-2 border border-white/5">
+      <canvas 
+        ref={canvasRef} 
+        width={400} 
+        height={64} 
+        className="w-full h-full opacity-90"
+      />
     </div>
   );
 };

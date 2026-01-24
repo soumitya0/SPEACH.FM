@@ -2,8 +2,6 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { decode, decodeAudioData } from "../utils";
 
-// Map our custom personality IDs to the underlying Gemini TTS voice names
-// Only 'Kore', 'Puck', 'Charon', 'Fenrir', 'Zephyr' are supported for gemini-2.5-flash-preview-tts.
 const VOICE_MAP: Record<string, string> = {
   'Aradhya': 'Kore',
   'Kore': 'Kore',
@@ -13,10 +11,17 @@ const VOICE_MAP: Record<string, string> = {
   'Zephyr': 'Zephyr'
 };
 
+export interface TTSResult {
+  rawBytes: Uint8Array;
+  duration: number;
+  audioContext: AudioContext;
+  source: AudioBufferSourceNode;
+}
+
 export class TTSService {
   private audioContext: AudioContext | null = null;
 
-  private initAudioContext() {
+  public getContext() {
     if (!this.audioContext) {
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)({
         sampleRate: 24000,
@@ -25,16 +30,13 @@ export class TTSService {
     return this.audioContext;
   }
 
-  /**
-   * Synthesizes text to speech, plays it, and returns the raw PCM bytes.
-   */
-  async synthesizeAndPlay(text: string, voiceId: string): Promise<Uint8Array> {
-    const ctx = this.initAudioContext();
+  async synthesizeAndPlay(text: string, voiceId: string): Promise<TTSResult> {
+    const ctx = this.getContext();
     if (ctx.state === 'suspended') {
       await ctx.resume();
     }
 
-    // Always create a fresh instance of the AI client with the provided API key.
+    // Always create a new instance as per developer guidelines for up-to-date API keys
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const voiceName = VOICE_MAP[voiceId] || 'Kore';
 
@@ -53,43 +55,34 @@ export class TTSService {
       });
 
       const candidate = response.candidates?.[0];
-      if (!candidate) {
-        throw new Error("Gemini returned no response. This can happen due to safety filtering or account limitations.");
+      if (!candidate || !candidate.content) {
+        throw new Error("No response content from AI.");
       }
 
-      // Find the first part that contains inline audio data
-      const audioPart = candidate.content?.parts?.find(p => p.inlineData);
+      // More robust check for audio part - look for any part with inlineData
+      const audioPart = candidate.content.parts.find(p => p.inlineData);
       const base64Audio = audioPart?.inlineData?.data;
 
       if (!base64Audio) {
-        // Log candidate info for debugging
-        console.debug("TTS Candidate response:", candidate);
-        
-        // Check for text-only response (which often explains errors/blocks)
-        const textResponse = candidate.content?.parts?.find(p => p.text)?.text;
-        if (textResponse) {
-          throw new Error(`Model returned text instead of audio: "${textResponse}"`);
+        const textPart = candidate.content.parts.find(p => p.text);
+        if (textPart?.text) {
+          throw new Error(`Model returned text instead of audio: "${textPart.text}"`);
         }
-        
-        throw new Error("No audio data received from Gemini. Check console for details.");
+        throw new Error("No audio data received from the API.");
       }
 
       const rawBytes = decode(base64Audio);
-      const audioBuffer = await decodeAudioData(
-        rawBytes,
-        ctx,
-        24000,
-        1,
-      );
+      const audioBuffer = await decodeAudioData(rawBytes, ctx, 24000, 1);
 
       const source = ctx.createBufferSource();
       source.buffer = audioBuffer;
-      source.connect(ctx.destination);
       
-      return new Promise((resolve) => {
-        source.onended = () => resolve(rawBytes);
-        source.start();
-      });
+      return {
+        rawBytes,
+        duration: audioBuffer.duration,
+        audioContext: ctx,
+        source
+      };
     } catch (error: any) {
       console.error("TTS Synthesis Error:", error);
       throw error;
