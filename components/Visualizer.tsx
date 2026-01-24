@@ -56,11 +56,11 @@ export const Visualizer: React.FC<VisualizerProps> = ({ analyser, isPlaying, col
   }, [analyser, isPlaying, color]);
 
   return (
-    <div className="h-16 w-full flex items-center justify-center bg-black/40 rounded-xl overflow-hidden px-2 border border-white/5">
+    <div className="h-10 w-full flex items-center justify-center bg-black/40 rounded-lg overflow-hidden px-2 border border-white/5">
       <canvas 
         ref={canvasRef} 
         width={400} 
-        height={64} 
+        height={40} 
         className="w-full h-full opacity-90"
       />
     </div>
