@@ -1,6 +1,7 @@
-
 import { GoogleGenAI, Modality } from "@google/genai";
 import { decode, decodeAudioData } from "../utils";
+
+const GEMINI_API_KEY = "AIzaSyC_TExb8UUARXDt3TKUsjayA_KjcZXcpcU";
 
 const VOICE_MAP: Record<string, string> = {
   'Aradhya': 'Kore',
@@ -37,7 +38,7 @@ export class TTSService {
     }
 
     // Always create a new instance as per developer guidelines for up-to-date API keys
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const ai = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
     const voiceName = VOICE_MAP[voiceId] || 'Kore';
 
     try {
