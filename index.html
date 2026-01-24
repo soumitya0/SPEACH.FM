@@ -27,8 +27,15 @@
         from { transform: rotate(0deg); }
         to { transform: rotate(360deg); }
       }
+      @keyframes scan {
+        0% { transform: translateY(-100%); }
+        100% { transform: translateY(400%); }
+      }
       .animate-spin-slow {
         animation: spin-slow 12s linear infinite;
+      }
+      .animate-scan {
+        animation: scan 2s linear infinite;
       }
       .paused {
         animation-play-state: paused;

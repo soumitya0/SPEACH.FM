@@ -6,11 +6,25 @@ import { Visualizer } from './components/Visualizer';
 import { Voice, AppTab } from './types';
 import { createWavBlob } from './utils';
 
+const LOADING_MESSAGES = [
+  "INITIATING NEURAL ENCODER...",
+  "ANALYZING SCRIPT SYNTAX...",
+  "SYNTHESIZING PCM STREAM...",
+  "CALIBRATING VOCAL FREQUENCIES...",
+  "OPTIMIZING SIGNAL INTEGRITY...",
+  "VIRTUAL HOST READYING...",
+  "FINALIZING BROADCAST BUFFER..."
+];
+
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AppTab>('broadcast');
   const [selectedVoice, setSelectedVoice] = useState<Voice>(VOICES[0]);
   const [inputText, setInputText] = useState(DEFAULT_PROMPT);
   const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [isSynthesizing, setIsSynthesizing] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState("");
+  const [countdown, setCountdown] = useState(60);
+  const [showRelaxMsg, setShowRelaxMsg] = useState(false);
   const [playbackStartTime, setPlaybackStartTime] = useState<number | null>(null);
   const [broadcastProgress, setBroadcastProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
@@ -39,6 +53,19 @@ const App: React.FC = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Timer logic for synthesis
+  useEffect(() => {
+    let timer: number;
+    if (isSynthesizing && countdown > 0) {
+      timer = window.setInterval(() => {
+        setCountdown(prev => prev - 1);
+      }, 1000);
+    } else if (countdown === 0) {
+      setShowRelaxMsg(true);
+    }
+    return () => clearInterval(timer);
+  }, [isSynthesizing, countdown]);
+
   // Auto-scroll logic for teleprompter
   useEffect(() => {
     if (!isBroadcasting || !playbackStartTime || !durationRef.current) return;
@@ -66,30 +93,62 @@ const App: React.FC = () => {
   }, [isBroadcasting, playbackStartTime]);
 
   const handleBroadcast = async () => {
-    if (!inputText.trim() || isBroadcasting) return;
-    setIsBroadcasting(true);
+    if (!inputText.trim() || isBroadcasting || isSynthesizing) return;
+    
+    setIsSynthesizing(true);
+    setCountdown(60);
+    setShowRelaxMsg(false);
+    setLoadingMessage(LOADING_MESSAGES[0]);
     setError(null);
     setBroadcastProgress(0);
+
+    // Dynamic loading messages
+    let msgIdx = 1;
+    const msgInterval = setInterval(() => {
+      setLoadingMessage(LOADING_MESSAGES[msgIdx % LOADING_MESSAGES.length]);
+      msgIdx++;
+    }, 1200);
+
     try {
       const { rawBytes, duration, audioContext, source } = await ttsService.synthesizeAndPlay(inputText, selectedVoice.id);
+      
+      clearInterval(msgInterval);
+      setIsSynthesizing(false);
+      setIsBroadcasting(true);
+      
       durationRef.current = duration;
       setLastAudioBlob(createWavBlob(rawBytes));
+      
       const newAnalyser = audioContext.createAnalyser();
       newAnalyser.fftSize = 64;
       source.connect(newAnalyser);
       newAnalyser.connect(audioContext.destination);
       setAnalyser(newAnalyser);
+      
       source.start(0);
       setPlaybackStartTime(performance.now());
+      
       source.onended = () => {
         setIsBroadcasting(false);
         setPlaybackStartTime(null);
         setAnalyser(null);
       };
     } catch (err: any) {
+      clearInterval(msgInterval);
+      setIsSynthesizing(false);
       setError(err.message || "Synthesis failed.");
-      setIsBroadcasting(false);
     }
+  };
+
+  const recalibrateSignal = () => {
+    setInputText(DEFAULT_PROMPT);
+    setBroadcastProgress(0);
+    setError(null);
+    setLastAudioBlob(null);
+    setIsBroadcasting(false);
+    setIsSynthesizing(false);
+    setPlaybackStartTime(null);
+    setAnalyser(null);
   };
 
   const onImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -172,7 +231,7 @@ const App: React.FC = () => {
           {VOICES.map((voice) => (
             <button
               key={voice.id}
-              disabled={isBroadcasting}
+              disabled={isBroadcasting || isSynthesizing}
               onClick={() => setSelectedVoice(voice)}
               className={`w-full group p-3 rounded-2xl flex items-center gap-4 transition-all border ${
                 selectedVoice.id === voice.id 
@@ -217,6 +276,44 @@ const App: React.FC = () => {
               
               {/* Left Column: Input or Teleprompter */}
               <div className={`flex-[3] glass rounded-[1.5rem] md:rounded-[2.5rem] flex flex-col p-5 md:p-10 relative overflow-hidden transition-all duration-300 ${isBroadcasting ? 'min-h-[160px] xl:min-h-0' : 'flex-1'}`}>
+                
+                {/* LOADER UI (Localized to script area) */}
+                {isSynthesizing && (
+                  <div className="absolute inset-0 z-[60] flex flex-col items-center justify-center bg-black/60 backdrop-blur-xl transition-all duration-500 p-8">
+                    <div className="relative w-48 h-48 md:w-64 md:h-64 flex items-center justify-center">
+                      {/* Spinning Ring */}
+                      <div className="absolute inset-0 border-4 border-white/5 rounded-full"></div>
+                      <div 
+                        className="absolute inset-0 border-4 border-t-transparent rounded-full animate-spin" 
+                        style={{ borderColor: `${selectedVoice.color} transparent transparent transparent` }}
+                      ></div>
+                      
+                      {/* Countdown or Relax Msg */}
+                      <div className="flex flex-col items-center gap-2">
+                        {!showRelaxMsg ? (
+                          <div className="text-4xl md:text-6xl font-black tabular-nums tracking-tighter" style={{ color: selectedVoice.color }}>
+                            {countdown}
+                          </div>
+                        ) : (
+                          <div className="text-center animate-pulse px-4">
+                            <span className="text-xs md:text-sm font-black leading-tight uppercase tracking-widest text-white/80">SIT RELAX<br/>WE ARE ANALYZING CONTEXT</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Radar Scan Effect */}
+                      <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none">
+                        <div className="absolute top-0 left-0 w-full h-[2px] bg-gradient-to-r from-transparent via-white/40 to-transparent animate-scan"></div>
+                      </div>
+                    </div>
+                    
+                    <div className="mt-8 text-center space-y-2">
+                      <div className="font-mono text-[9px] text-white/30 uppercase tracking-[0.4em] animate-pulse">Neural Signal Synthesis</div>
+                      <h2 className="text-[10px] md:text-xs font-bold tracking-[0.2em] uppercase text-white h-4">{loadingMessage}</h2>
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-between items-center mb-4 md:mb-8">
                    <div className="flex items-center gap-4">
                      {/* Inner Close Button (Desktop Only) */}
@@ -267,7 +364,9 @@ const App: React.FC = () => {
                       value={inputText}
                       onChange={(e) => setInputText(e.target.value)}
                       placeholder="Start writing your script here..."
-                      className="w-full h-full bg-transparent border-none focus:ring-0 text-xl md:text-4xl lg:text-5xl font-black leading-tight placeholder:text-white/5 resize-none no-scrollbar"
+                      disabled={isSynthesizing}
+                      className="w-full h-full bg-transparent border-none focus:ring-0 text-xl md:text-4xl lg:text-5xl font-black leading-tight placeholder:text-white/5 resize-none no-scrollbar transition-opacity duration-300"
+                      style={{ opacity: isSynthesizing ? 0.1 : 1 }}
                     />
                   )}
                 </div>
@@ -276,7 +375,7 @@ const App: React.FC = () => {
               {/* Right Column: Player & Controls */}
               <div className={`flex-[2] flex flex-col gap-4 transition-all duration-300 ${isBroadcasting ? 'h-auto' : ''}`}>
                 
-                {/* ALBUM / CD PLAYER - Transformation logic for non-desktop */}
+                {/* ALBUM / CD PLAYER */}
                 <div className={`glass rounded-[1.5rem] md:rounded-[2.5rem] flex lg:flex-col items-center justify-center p-4 md:p-6 relative overflow-hidden group transition-all duration-500 ${isBroadcasting ? 'py-6 md:py-8' : 'flex-1'} gap-4 md:gap-6`}>
                    {/* Background Glow */}
                    <div 
@@ -285,7 +384,7 @@ const App: React.FC = () => {
                    ></div>
 
                    <div className="relative shrink-0">
-                      {/* Outer Vinyl / CD - Smaller on mobile header style */}
+                      {/* Outer Vinyl / CD */}
                       <div 
                         className={`w-20 h-20 sm:w-32 sm:h-32 md:w-48 md:h-48 lg:w-56 lg:h-56 rounded-full bg-black shadow-2xl flex items-center justify-center relative overflow-hidden border-2 md:border-4 border-white/5 animate-spin-slow ${!isBroadcasting ? 'paused' : ''}`}
                       >
@@ -305,31 +404,27 @@ const App: React.FC = () => {
                       )}
                    </div>
 
-                   {/* Custom Station Identity - Transforms into INLINE FLEX on mobile/tablet */}
+                   {/* Custom Station Identity */}
                    <div className={`text-center lg:text-center lg:px-4 w-full flex flex-col items-center lg:items-center justify-center transition-all duration-500 flex-1`}>
                       <span className="hidden lg:block text-[9px] font-mono text-white/20 uppercase tracking-[0.3em] mb-1 font-bold">
                         {isBroadcasting ? 'LIVE TRANSMISSION' : 'STATION IDLE'}
                       </span>
                       
-                      {/* INLINE WRAPPER FOR MOBILE: [ALBUM NAME] | [STATION NAME] | [HOST] */}
                       <div className="w-full flex flex-row flex-wrap items-center justify-center gap-x-3 gap-y-1 lg:flex-col lg:gap-0.5">
                         <h3 className="text-sm sm:text-lg md:text-3xl lg:text-5xl font-black uppercase tracking-tighter leading-tight whitespace-nowrap">
                           {albumName}
                         </h3>
-                        {/* Inline Separator for mobile */}
                         <div className="hidden sm:block lg:hidden h-3 w-[1px] bg-white/10"></div>
                         <h4 className="text-[9px] sm:text-[10px] md:text-[12px] lg:text-[11px] font-mono text-white/40 lg:text-white/40 uppercase tracking-[0.1em] sm:tracking-[0.2em] lg:tracking-[0.25em] font-bold whitespace-nowrap">
                           {stationName}
                         </h4>
                         <div className="hidden sm:block lg:hidden h-3 w-[1px] bg-white/10"></div>
-                        {/* Voice Host Indicator - Inline on mobile */}
                         <div className="flex items-center gap-1.5 lg:mt-3 px-2 py-0.5 lg:px-3 lg:py-1 rounded-full bg-white/5 border border-white/10 shrink-0">
                            <span className="w-1 h-1 lg:w-1.5 lg:h-1.5 rounded-full" style={{ backgroundColor: selectedVoice.color }}></span>
                            <span className="text-[8px] sm:text-[9px] font-bold text-white/60 uppercase tracking-widest">{selectedVoice.name}</span>
                         </div>
                       </div>
 
-                      {/* Station Description - Only show on desktop screens */}
                       <div className="hidden lg:block flex-1 w-full overflow-y-auto custom-scroll mt-3 px-2 max-w-[280px]">
                         <p className="text-xs text-white/50 font-medium whitespace-pre-wrap text-center">
                           {stationDescription}
@@ -344,8 +439,17 @@ const App: React.FC = () => {
                    
                    <div className="flex gap-2">
                       <button
+                        onClick={recalibrateSignal}
+                        disabled={isBroadcasting || isSynthesizing}
+                        className="p-2 md:p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all disabled:opacity-20 flex items-center justify-center shrink-0 text-white/40 hover:text-white"
+                        title="Recalibrate Signal (Reset)"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+                      </button>
+
+                      <button
                         onClick={downloadAudio}
-                        disabled={!lastAudioBlob || isBroadcasting}
+                        disabled={!lastAudioBlob || isBroadcasting || isSynthesizing}
                         className="p-2 md:p-3 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-all disabled:opacity-20 flex items-center justify-center shrink-0"
                         title="Download Last Broadcast"
                       >
@@ -354,14 +458,22 @@ const App: React.FC = () => {
 
                       <button
                         onClick={handleBroadcast}
-                        disabled={isBroadcasting || !inputText.trim()}
-                        className={`flex-1 py-2.5 md:py-3 rounded-lg font-black text-[10px] md:text-xs tracking-[0.2em] transition-all uppercase ${
-                          isBroadcasting 
+                        disabled={isBroadcasting || isSynthesizing || !inputText.trim()}
+                        className={`flex-1 py-2.5 md:py-3 rounded-lg font-black text-[10px] md:text-xs tracking-[0.2em] transition-all uppercase relative overflow-hidden ${
+                          isBroadcasting || isSynthesizing
                             ? 'bg-red-600 shadow-[0_0_12px_rgba(220,38,38,0.3)]' 
                             : 'bg-white text-black hover:scale-[1.01] active:scale-95'
                         }`}
                       >
-                        {isBroadcasting ? "STATION LIVE" : "START BROADCAST"}
+                        {isSynthesizing ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <svg className="animate-spin h-3 w-3 text-white" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            Synthesizing...
+                          </span>
+                        ) : isBroadcasting ? "STATION LIVE" : "START BROADCAST"}
                       </button>
                    </div>
                 </div>
@@ -385,7 +497,7 @@ const App: React.FC = () => {
                    <p className="text-white/40 font-medium text-xs md:text-sm">Customize your broadcast visuals and station ID.</p>
                 </div>
 
-                <div className="space-y-4 md:space-y-6">
+                <div className="space-y-4 md:space-y-6 text-center">
                   <div className="relative group mx-auto w-32 h-32 md:w-56 md:h-56">
                     <div className="absolute inset-0 bg-blue-600/10 rounded-full blur-2xl group-hover:bg-blue-600/20 transition-all duration-500"></div>
                     <div className="relative w-full h-full rounded-full border-2 md:border-4 border-white/10 overflow-hidden shadow-2xl">
@@ -398,7 +510,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 max-w-sm mx-auto">
                     <input 
                       type="text" 
                       placeholder="Paste Image URL..." 
@@ -446,18 +558,22 @@ const App: React.FC = () => {
                         placeholder="Station bio..."
                       />
                    </div>
-                   <div className="flex flex-col justify-end space-y-1 sm:col-span-2 text-center md:text-left">
-                      <div className="text-[8px] md:text-[9px] font-mono text-white/20 uppercase tracking-widest">Digital High-Fidelity Signal</div>
-                      <div className="text-[10px] md:text-[12px] font-bold text-white/40">24.0 KHZ PCM MONO</div>
-                   </div>
                 </div>
 
-                <button 
-                  onClick={() => setActiveTab('broadcast')}
-                  className="w-full py-4 md:py-5 rounded-xl md:rounded-[2rem] bg-blue-600 font-black text-lg md:text-xl uppercase tracking-tighter hover:scale-[1.02] transition-all shadow-xl shadow-blue-600/20 active:scale-95"
-                >
-                  Confirm Calibration
-                </button>
+                <div className="flex flex-col gap-4">
+                  <button 
+                    onClick={() => setActiveTab('broadcast')}
+                    className="w-full py-4 md:py-5 rounded-xl md:rounded-[2rem] bg-blue-600 font-black text-lg md:text-xl uppercase tracking-tighter hover:scale-[1.02] transition-all shadow-xl shadow-blue-600/20 active:scale-95"
+                  >
+                    Confirm Calibration
+                  </button>
+                  <button 
+                    onClick={recalibrateSignal}
+                    className="w-full py-3 rounded-xl text-white/20 hover:text-white/60 text-[10px] font-bold uppercase tracking-[0.3em] transition-all"
+                  >
+                    Clear Station Data
+                  </button>
+                </div>
              </div>
           </div>
         )}
